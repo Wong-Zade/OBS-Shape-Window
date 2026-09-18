@@ -1,0 +1,26 @@
+name: Build OBS Shape Window
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build plugin
+        uses: obsproject/obs-plugintemplate/.github/actions/build-plugin@master
+        with:
+          package: true
+
+      - name: Upload plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: OBS-Shape-Window
+          path: ./build_x64/*.zip
