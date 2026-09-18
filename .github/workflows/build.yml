@@ -11,16 +11,34 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout plugin
         uses: actions/checkout@v4
 
+      - name: Get OBS build system
+        shell: pwsh
+        run: |
+          git clone --depth 1 https://github.com/obsproject/obs-plugintemplate.git "$env:RUNNER_TEMP\obs-template"
+
+          Copy-Item "$env:RUNNER_TEMP\obs-template\.github" "$env:GITHUB_WORKSPACE\" -Recurse -Force
+          Copy-Item "$env:RUNNER_TEMP\obs-template\cmake" "$env:GITHUB_WORKSPACE\" -Recurse -Force
+          Copy-Item "$env:RUNNER_TEMP\obs-template\build-aux" "$env:GITHUB_WORKSPACE\" -Recurse -Force
+          Copy-Item "$env:RUNNER_TEMP\obs-template\CMakePresets.json" "$env:GITHUB_WORKSPACE\" -Force
+
       - name: Build plugin
-        uses: obsproject/obs-plugintemplate/.github/actions/build-plugin@master
+        uses: ./.github/actions/build-plugin
         with:
+          target: x64
+          config: Release
+
+      - name: Package plugin
+        uses: ./.github/actions/package-plugin
+        with:
+          target: x64
+          config: Release
           package: true
 
       - name: Upload plugin
         uses: actions/upload-artifact@v4
         with:
           name: OBS-Shape-Window
-          path: ./build_x64/*.zip
+          path: release/*.zip
