@@ -1,0 +1,46 @@
+uniform texture2d image;
+uniform float2 uv_size;
+uniform float radius;
+uniform float shape_mode;
+
+sampler_state linear_sampler {
+    Filter = Linear;
+    AddressU = Clamp;
+    AddressV = Clamp;
+};
+
+float rounded_box(float2 p, float2 b, float r)
+{
+    float2 q = abs(p) - b + r;
+    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+}
+
+float4 Draw(VertData v_in) : TARGET
+{
+    float4 color = image.Sample(linear_sampler, v_in.uv);
+    float2 p = (v_in.uv - 0.5) * uv_size;
+    float alpha;
+
+    if (shape_mode < 0.5) {
+        float r = min(uv_size.x, uv_size.y) * 0.5;
+        float d = length(p) - r;
+        alpha = 1.0 - smoothstep(-1.0, 1.0, d);
+    } else {
+        float2 half_size = uv_size * 0.5;
+        float r = min(radius, min(half_size.x, half_size.y));
+        float d = rounded_box(p, half_size, r);
+        alpha = 1.0 - smoothstep(-1.0, 1.0, d);
+    }
+
+    color.a *= alpha;
+    return color;
+}
+
+technique Draw
+{
+    pass
+    {
+        vertex_shader = VSDefault(v_in);
+        pixel_shader = Draw(v_in);
+    }
+}
