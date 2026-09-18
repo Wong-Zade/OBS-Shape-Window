@@ -37,34 +37,27 @@ jobs:
           config: Release
           package: true
 
-      - name: Install Inno Setup
+      - name: Locate plugin DLL
         shell: pwsh
         run: |
-          choco install innosetup -y --no-progress
+          Write-Host "Searching for obs-shape-window.dll..."
 
-      - name: Locate plugin files
-        shell: pwsh
-        run: |
-          Write-Host "Searching for plugin DLL..."
-          $dll = Get-ChildItem -Path $env:GITHUB_WORKSPACE -Filter "obs-shape-window.dll" -Recurse | Select-Object -First 1
+          $dll = Get-ChildItem `
+            -Path $env:GITHUB_WORKSPACE `
+            -Filter "obs-shape-window.dll" `
+            -Recurse `
+            -File |
+            Select-Object -First 1
 
           if (-not $dll) {
             Write-Error "obs-shape-window.dll was not found."
-            Get-ChildItem -Path $env:GITHUB_WORKSPACE -Recurse -File | Select-Object FullName
             exit 1
           }
 
-          Write-Host "DLL found at: $($dll.FullName)"
+          Write-Host "DLL found:"
+          Write-Host $dll.FullName
+
           "PLUGIN_DLL=$($dll.FullName)" >> $env:GITHUB_ENV
-
-          $data = Get-ChildItem -Path $env:GITHUB_WORKSPACE -Directory -Recurse |
-            Where-Object { $_.Name -eq "obs-shape-window" } |
-            Select-Object -First 1
-
-          if ($data) {
-            Write-Host "Data folder found at: $($data.FullName)"
-            "PLUGIN_DATA=$($data.FullName)" >> $env:GITHUB_ENV
-          }
 
       - name: Install Inno Setup
         shell: pwsh
@@ -74,6 +67,8 @@ jobs:
       - name: Create installer script
         shell: pwsh
         run: |
+          New-Item -ItemType Directory -Force installer | Out-Null
+
           @"
           [Setup]
           AppId={{8E5A8B40-6C9A-4F4E-9A15-OBS-SHAPE-WINDOW}}
@@ -90,57 +85,14 @@ jobs:
 
           [Files]
           Source: "$env:PLUGIN_DLL"; DestDir: "{app}\obs-plugins\64bit"; Flags: ignoreversion
-          "@ | Set-Content installer.iss -Encoding UTF8
-
-          New-Item -ItemType Directory -Force installer | Out-Null
-
-      - name: Build installer
-        shell: pwsh
-        run: |
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
-
-      - name: Upload installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: OBS-Shape-Window-Installer
-          path: installer\OBS-Shape-Window-Setup.exe
-        shell: pwsh
-        run: |
-          @'
-          #define MyAppName "OBS Shape Window"
-          #define MyAppVersion "0.1.0"
-          #define MyAppPublisher "Wong-Zade"
-          #define MyAppExeName "obs-shape-window.dll"
-
-          [Setup]
-          AppId={{8E5A8B40-6C9A-4F4E-9A15-OBS-SHAPE-WINDOW}}
-          AppName={#MyAppName}
-          AppVersion={#MyAppVersion}
-          AppPublisher={#MyAppPublisher}
-          DefaultDirName={autopf}\obs-studio
-          DisableProgramGroupPage=yes
-          OutputDir=installer
-          OutputBaseFilename=OBS-Shape-Window-Setup
-          Compression=lzma
-          SolidCompression=yes
-          ArchitecturesInstallIn64BitMode=x64compatible
-
-          [Files]
-          Source: "build_x64\Release\obs-plugins\64bit\obs-shape-window.dll"; DestDir: "{app}\obs-plugins\64bit"; Flags: ignoreversion
-          Source: "build_x64\Release\data\obs-plugins\obs-shape-window\*"; DestDir: "{app}\data\obs-plugins\obs-shape-window"; Flags: ignoreversion recursesubdirs createallsubdirs
 
           [UninstallDelete]
           Type: files; Name: "{app}\obs-plugins\64bit\obs-shape-window.dll"
-          Type: filesandordirs; Name: "{app}\data\obs-plugins\obs-shape-window"
-
-          [Messages]
-          WelcomeLabel2=This will install OBS Shape Window into your OBS Studio installation.{#MyAppName}
-          '@ | Set-Content installer.iss -Encoding UTF8
+          "@ | Set-Content installer.iss -Encoding UTF8
 
       - name: Build installer
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force installer
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
 
       - name: Upload installer
