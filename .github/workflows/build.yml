@@ -37,8 +37,53 @@ jobs:
           config: Release
           package: true
 
-      - name: Upload plugin
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+
+      - name: Create installer script
+        shell: pwsh
+        run: |
+          @'
+          #define MyAppName "OBS Shape Window"
+          #define MyAppVersion "0.1.0"
+          #define MyAppPublisher "Wong-Zade"
+          #define MyAppExeName "obs-shape-window.dll"
+
+          [Setup]
+          AppId={{8E5A8B40-6C9A-4F4E-9A15-OBS-SHAPE-WINDOW}}
+          AppName={#MyAppName}
+          AppVersion={#MyAppVersion}
+          AppPublisher={#MyAppPublisher}
+          DefaultDirName={autopf}\obs-studio
+          DisableProgramGroupPage=yes
+          OutputDir=installer
+          OutputBaseFilename=OBS-Shape-Window-Setup
+          Compression=lzma
+          SolidCompression=yes
+          ArchitecturesInstallIn64BitMode=x64compatible
+
+          [Files]
+          Source: "build_x64\Release\obs-plugins\64bit\obs-shape-window.dll"; DestDir: "{app}\obs-plugins\64bit"; Flags: ignoreversion
+          Source: "build_x64\Release\data\obs-plugins\obs-shape-window\*"; DestDir: "{app}\data\obs-plugins\obs-shape-window"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+          [UninstallDelete]
+          Type: files; Name: "{app}\obs-plugins\64bit\obs-shape-window.dll"
+          Type: filesandordirs; Name: "{app}\data\obs-plugins\obs-shape-window"
+
+          [Messages]
+          WelcomeLabel2=This will install OBS Shape Window into your OBS Studio installation.{#MyAppName}
+          '@ | Set-Content installer.iss -Encoding UTF8
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force installer
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
+
+      - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: OBS-Shape-Window
-          path: release/*.zip
+          name: OBS-Shape-Window-Installer
+          path: installer\OBS-Shape-Window-Setup.exe
