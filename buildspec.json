@@ -25,7 +25,11 @@
       }
     }
   },
-  "platformConfig": {},
+  "platformConfig": {
+  "macos": {
+    "bundleId": "com.wongzade.obs-shape-window"
+  }
+},
   "name": "obs-shape-window",
   "displayName": "OBS Shape Window",
   "version": "0.1.0",
